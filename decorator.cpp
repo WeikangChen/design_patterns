@@ -3,27 +3,29 @@
 using namespace std;
 
 // https://sourcemaking.com/design_patterns/decorator/cpp/1
+// http://www.thinkbottomup.com.au/site/blog/C%20%20_Mixins_-_Reuse_through_inheritance_is_good
+// https://michael-afanasiev.github.io/2016/08/03/Combining-Static-and-Dynamic-Polymorphism-with-C++-Template-Mixins.html
 
-class widget {
+class decor_base {
 public:
-    virtual ~widget() {}
+    virtual ~decor_base() {}
     virtual void draw() = 0;
 };
 
-class core : public widget {
+class decor_core : public decor_base {
 public:
     void draw() override {
-        cout << "Draw: Core";
+        cout << "Decor Draw: Core";
     }
-    ~core() {
-        cout << " ~core()";
+    ~decor_core() {
+        cout << __func__ << "\n";
     }
 };
 
-class decor : public widget {
-    widget* wrapee_ = nullptr;
+class decor : public decor_base {
+    decor_base* wrapee_ = nullptr;
 public:
-    decor(widget* w) : wrapee_{w} {}
+    decor(decor_base* w) : wrapee_{w} {}
     void draw() override {
         wrapee_->draw();
     }
@@ -35,53 +37,75 @@ public:
 
 class decorX : public decor {
 public:
-    decorX(widget* w) : decor(w) {}
+    decorX(decor_base* w) : decor(w) {}
     void draw() override {
         decor::draw();
         cout << " X";
     }
     ~decorX() {
-        cout << " ~X()";
+        cout << __func__ << " ";
     }
 };
 
 class decorY : public decor {
 public:
-    decorY(widget* w) : decor(w) {}
+    decorY(decor_base* w) : decor(w) {}
     void draw() override {
         decor::draw();
         cout << " Y";
     }
     ~decorY() {
-        cout << " ~Y()";
+        cout << __func__ << " ";
     }
 };
 
 template<typename T>
-class MixinX : public T {
+class mixin_common : public T {
 public:
     void draw() {
-        T::draw();
+        this->do_draw();
+    }
+};
+
+class mixin_core {
+public:
+    ~mixin_core() {
+        cout << __func__ << endl;
+    }
+    void do_draw() {
+        cout << "Mixin Draw: Core";
+    }
+};
+
+template<typename T>
+class mixinX : public T {
+public:
+    ~mixinX() {
+        cout << __func__ << " ";
+    }
+    void do_draw() {
+        T::do_draw();
         cout << " X";
     } 
 };
 
-
 template<typename T>
-class MixinY : public T {
+class mixinY : public T {
 public:
-    void draw() {
-        T::draw();
+    ~mixinY() {
+        cout << __func__ << " ";
+    }
+    void do_draw() {
+        T::do_draw();
         cout << " Y";
     } 
 };
 
-
 void test_decor() {
-    cout << "----" << __func__ << "----" << endl;
-    widget* w = nullptr;
+    cout << "------ " << __func__ << " ------" << endl;
+    decor_base* w = nullptr;
 
-    w = new core;
+    w = new decor_core;
     w->draw();
     cout << "\n";
         
@@ -94,19 +118,33 @@ void test_decor() {
     cout << "\n";
     
     delete w;
-    cout << "\n";
 }
 
 void test_mixin() {
-    cout << "----" << __func__ << "----" << endl;
-    MixinX<core> mixin_x_core;
+    cout << "------ " << __func__ << " ------" << endl;
+    mixin_common<mixin_core> mixin_just_core;
+    mixin_just_core.draw();
+    cout << "\n";
+    
+    mixin_common<mixinX<mixin_core>> mixin_x_core;
     mixin_x_core.draw();
     cout << "\n";
 
-    MixinY<MixinX<core>> mixin_xy_core;
+    mixin_common<mixinY<mixinX<mixin_core>>> mixin_xy_core;
     mixin_xy_core.draw();
     cout << "\n";
+/*
+    // wrong
+    mixinX<core> mixin_x_core;
+    mixin_x_core.draw();
+    cout << "\n";
+
+    mixinY<mixinX<core>> mixin_xy_core;
+    mixin_xy_core.draw();
+    cout << "\n";
+*/
 }
+
 int main(int argc, char** argv) 
 {
     test_decor();
